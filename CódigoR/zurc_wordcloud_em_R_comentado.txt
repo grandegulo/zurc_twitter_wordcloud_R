@@ -1,0 +1,58 @@
+#grandegulo@gmail.com
+#Pg 255 Introducao à Mineração de Dados com Aplicações em R - Elsevier
+#Construindo uma nuvem de palavras com dados do twitter
+#Ao final voc~e também terá um dataframe com os tweets, e um corpus para aplicar outras técnicas de mineração de dados
+#instalando pacotes
+install.packages("twitteR")
+install.packages("ROAuth")
+install.packages("RCurl")
+install.packages("tm")
+install.packages('SnowballC')
+install.packages("wordcloud")
+library("twitteR")
+library("ROAuth")
+library("RCurl")
+library('tm')
+library ('SnowballC')
+library ("wordcloud")
+#configurando a autenticação
+#aqui você deve colocar seus dados de autenticação. Há um PDF de como obter esses dados no mesmo diretório em que vc buscou o Script
+#https://drive.google.com/open?id=18Z3SylUpYTZ21tudXysspGyc85CiYpGr
+setup_twitter_oauth(consumer_key = 'CONSUMER_key', consumer_secret = 'CONSUMER_SECRET',access_token = 'ACCESS_TOKEN',access_secret = 'ACCESS_SECRET')
+#buscando as postagens de um eterminado usuario: @Pontifex_pt (Papa Francisco)
+#escolhendo salvar em uma variável de sessão e não em arquivo
+2
+T<-userTimeline('@Pontifex_pt',50)
+#transformando os dados da postagem e adicionais (data, nr de retweets, latitude, longitude) em Dataframe
+df<-do.call("rbind", lapply(T,as.data.frame))
+#separando os dados do tipo texto
+library ('tm')
+tweets<-VectorSource(df$text)
+#Colocando os textos dos tweets em uma estrutura adequada para outra funções do pacote tm
+corpus <- Corpus(tweets)
+#Construindo o conjunto de dados Y: corpus_FI<-tm_map(corpus, operação)
+#Removendo pontuação
+corpus_FI<-tm_map(corpus, removePunctuation)
+#Se quiseres ver os resultados intermediarios, aplique inspect()
+inspect(corpus)
+#capitalização: transformar tudo em minúsculas
+corpus_FI<-tm_map(corpus, content_transformer(tolower))
+#remoção de números
+corpus_FI<-tm_map(corpus, removeNumbers)
+#remoção de termos irrelevantes. Usamos o pacote tm para portugues
+corpus_FI<-tm_map(corpus_FI,removeWords,stopwords("portuguese"))
+#se quiseres inserir alguma palavra nova na lista de stopwords, podes removê-la diretamente, ou inseri-la na lista:
+#aqui, apenas instrucionamente, optamos por criar uma variavel auxiliar, inserindo as palavras qualidade e ambiente
+#corpus_FI_2<-tm_map(corpus_FI, removeWords, c(stopwords("portuguese"),c(qualidade,ambiente)))
+#redução dos termos aos radicais
+corpus_FI<-tm_map(corpus_FI,stemDocument)
+#construindo a representação vetorial baseada na frequencia dos termos
+corpus_tf<-TermDocumentMatrix(corpus_FI,control = list(minWordLength = 1,minDocFreq=1))
+#usando o parametro tf-idf
+corpus_tf_idf<-weightTfIdf(corpus_tf,normalize=TRUE)
+#transformando o corpus em matrix para usar o pacote wordcloud:
+m<-as.matrix (corpus_tf)
+#calculando a frequencia das palavras e ordenando o resultado
+v<-sort(rowSums(m), decreasing=TRUE)
+#usando a função wordcloud
+wordcloud(names(v),v,min.freq=15)
